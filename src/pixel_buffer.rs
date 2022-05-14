@@ -48,7 +48,7 @@ impl Add for Color {
 }
 
 impl Mul for Color {
-    type Output = Color;
+    type Output = Self;
 
     fn mul(self, rhs: Self) -> Self::Output {
         Self {
@@ -89,8 +89,8 @@ impl Mul<Color> for f32 {
 
 #[derive(Debug, Clone, Copy)]
 pub struct PixelData {
-    color: Color,
-    weight: f32,
+    pub color: Color,
+    pub weight: f32,
 }
 
 impl PixelData {
@@ -193,7 +193,7 @@ impl PixelBuffer {
         }
     }
 
-    fn save<P: AsRef<Path>>(&self, path: P, tmo_type: &TMOType) -> Result<(), Box<dyn Error>> {
+    pub fn save<P: AsRef<Path>>(&self, path: P, tmo_type: &TMOType) -> Result<(), Box<dyn Error>> {
         let ext = Path::new(path.as_ref()).extension();
         match ext {
             None => Err("There is no filename.".into()),
@@ -231,7 +231,7 @@ mod tests {
         fill_rect(&mut buf, &red, 0, 200, 0, 100);
         fill_rect(&mut buf, &green, 0, 200, 100, 200);
         fill_rect(&mut buf, &blue, 0, 200, 200, 300);
-        buf.save("test.png", &TMOType::Linear);
+        buf.save("test.exr", &TMOType::Linear);
 
     }
 }

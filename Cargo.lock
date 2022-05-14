@@ -463,6 +463,7 @@ name = "rs_tracer"
 version = "0.1.0"
 dependencies = [
  "image",
+ "num_cpus",
 ]
 
 [[package]]
