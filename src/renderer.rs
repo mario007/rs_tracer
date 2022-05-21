@@ -54,12 +54,12 @@ fn create_tiles(width: usize, height: usize, tile_size: usize) -> Vec<Tile> {
 }
 
 pub struct Renderer {
-    sc_data: Arc<SceneData>,
+    scene_data: Arc<SceneData>,
 
     renderig_in_progress: bool,
     tiles: Arc<Vec<Tile>>,
     threads: Vec<thread::JoinHandle<()>>,
-    reciver: Option<mpsc::Receiver<TileData>>,
+    receiver: Option<mpsc::Receiver<TileData>>,
     pixel_buffer: PixelBuffer,
     n_tiles_processed: usize
 }
@@ -69,26 +69,26 @@ impl Renderer {
     pub fn new(sc_data: SceneData) -> Renderer {
         let (width, height) = sc_data.image_size();
         Renderer {
-            sc_data: Arc::new(sc_data),
+            scene_data: Arc::new(sc_data),
             renderig_in_progress: false,
             tiles: Arc::new(create_tiles(width, height, 16)),
             threads: Vec::new(),
-            reciver: None,
+            receiver: None,
             pixel_buffer: PixelBuffer::new(width, height),
             n_tiles_processed: 0
         }
     }
 
     fn create_threads(&mut self) {
-        let n_actual_threads = self.tiles.len().min(self.sc_data.get_nthreads());
-        let (tx, reciver): (mpsc::Sender<TileData>, mpsc::Receiver<TileData>) = mpsc::channel();
+        let n_actual_threads = self.tiles.len().min(self.scene_data.get_nthreads());
+        let (tx, reciver): (mpsc::SyncSender<TileData>, mpsc::Receiver<TileData>) = mpsc::sync_channel(0);
 
-        self.reciver = Some(reciver);
+        self.receiver = Some(reciver);
 
         for thread_id in 0..n_actual_threads {
             let sender = tx.clone();
             let tiles = Arc::clone(&self.tiles);
-            let sc_data = Arc::clone(&self.sc_data);
+            let sc_data = Arc::clone(&self.scene_data);
 
             let handle = thread::spawn (move || {
                 for tile in tiles.iter().skip(thread_id).step_by(n_actual_threads) {
@@ -113,7 +113,7 @@ impl Renderer {
 
         let start_time = Instant::now();
 
-        if let Some(rx) = &self.reciver {
+        if let Some(rx) = &self.receiver {
             loop {
                 let data = rx.recv().unwrap();
 
