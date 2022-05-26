@@ -3,17 +3,11 @@ use std::thread;
 use std::mem::drop;
 use std::time::{Duration, Instant};
 
+use crate::pcg::PCGRng;
 use crate::pixel_buffer::{Color, PixelBuffer, PixelData};
+use crate::ray::Ray;
 use crate::scene::SceneData;
-
-
-#[derive(Debug, Clone, Copy)]
-pub struct Tile {
-    startx: usize,
-    starty: usize,
-    endx: usize,
-    endy: usize
-}
+use crate::img_sampling::{Tile, ImageSampler};
 
 
 #[derive(Debug, Clone, Copy)]
@@ -23,15 +17,23 @@ pub struct PixelSample {
     color: Color
 }
 
-fn render_tile(tile: &Tile, sc_data: &SceneData) -> Vec<PixelSample> {
+fn render_sample(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
+    let t = 0.5 * (ray.direction.1 + 1.0);
+    let start_color = Color {red: 1.0, green: 1.0, blue: 1.0};
+    let end_color = Color {red: 0.5, green: 0.7, blue: 1.0};
+    (1.0 - t) * start_color + t * end_color
+}
+
+
+fn render_tile(tile: &Tile, scene_data: &SceneData, rng: &mut PCGRng) -> Vec<PixelSample> {
     let capacity = (tile.endx - tile.startx) * (tile.endy - tile.starty);
     let mut samples = Vec::with_capacity(capacity);
 
-    for y in tile.starty..tile.endy {
-        for x in tile.startx..tile.endx {
-            let color = Color{red: 1.0, green: 0.0, blue: 0.0};
-            samples.push(PixelSample{x, y, color});
-        }
+    let mut img_sampler = ImageSampler::new(*tile);
+    while let Some(sample) = img_sampler.next(rng) {
+        let ray = scene_data.generate_ray(sample.x, sample.y, sample.xp, sample.yp);
+        let color = render_sample(&ray, scene_data, rng);
+        samples.push(PixelSample { x: sample.x, y: sample.y, color });
     }
 
     samples
@@ -91,8 +93,9 @@ impl Renderer {
             let sc_data = Arc::clone(&self.scene_data);
 
             let handle = thread::spawn (move || {
+                let mut rng = PCGRng::new(0xf123456789012345, 1000 * thread_id as u64);
                 for tile in tiles.iter().skip(thread_id).step_by(n_actual_threads) {
-                    let samples = render_tile(tile, &sc_data);
+                    let samples = render_tile(tile, &sc_data, &mut rng);
                     sender.send(TileData {samples});
                 }
             });
