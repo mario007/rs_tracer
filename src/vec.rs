@@ -1,4 +1,5 @@
 use std::ops::{Add, Sub, Mul, Neg};
+use std::convert::From;
 
 // result = a * b - c * d
 pub fn difference_of_products(a: f32, b: f32, c: f32, d: f32) -> f32 {
@@ -138,6 +139,13 @@ impl Neg for f64x3 {
         Self(-self.0, -self.1, -self.2)
     }
 }
+
+impl From<f32x3> for f64x3 {
+    fn from(vec: f32x3) -> Self {
+        f64x3(vec.0 as f64, vec.1 as f64, vec.2 as f64)
+    }
+}
+
 
 #[cfg(test)]
 mod tests {

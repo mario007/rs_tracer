@@ -1,13 +1,16 @@
+use std::error::Error;
+use std::path::Path;
 use std::sync::{Arc, mpsc};
 use std::thread;
 use std::mem::drop;
 use std::time::{Duration, Instant};
 
 use crate::pcg::PCGRng;
-use crate::pixel_buffer::{Color, PixelBuffer, PixelData};
+use crate::pixel_buffer::{Color, PixelBuffer, PixelData, TMOType};
 use crate::ray::Ray;
 use crate::scene::SceneData;
 use crate::img_sampling::{Tile, ImageSampler};
+use crate::render::render_sample;
 
 
 #[derive(Debug, Clone, Copy)]
@@ -15,13 +18,6 @@ pub struct PixelSample {
     x: usize,
     y: usize,
     color: Color
-}
-
-fn render_sample(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
-    let t = 0.5 * (ray.direction.1 + 1.0);
-    let start_color = Color {red: 1.0, green: 1.0, blue: 1.0};
-    let end_color = Color {red: 0.5, green: 0.7, blue: 1.0};
-    (1.0 - t) * start_color + t * end_color
 }
 
 
@@ -94,9 +90,11 @@ impl Renderer {
 
             let handle = thread::spawn (move || {
                 let mut rng = PCGRng::new(0xf123456789012345, 1000 * thread_id as u64);
-                for tile in tiles.iter().skip(thread_id).step_by(n_actual_threads) {
-                    let samples = render_tile(tile, &sc_data, &mut rng);
-                    sender.send(TileData {samples});
+                for _n in 0..sc_data.get_samples_per_pixel() {
+                    for tile in tiles.iter().skip(thread_id).step_by(n_actual_threads) {
+                        let samples = render_tile(tile, &sc_data, &mut rng);
+                        sender.send(TileData {samples});
+                    }
                 }
             });
             self.threads.push(handle);
@@ -105,7 +103,7 @@ impl Renderer {
     }
 
     pub fn render(&mut self, timeout: Duration) -> bool {
-        if self.n_tiles_processed == self.tiles.len() {
+        if self.n_tiles_processed == self.tiles.len() * self.scene_data.get_samples_per_pixel() {
             return true;
         }
 
@@ -120,13 +118,14 @@ impl Renderer {
             loop {
                 let data = rx.recv().unwrap();
 
+                let (_width, height) = self.scene_data.image_size();
                 for sample in data.samples {
                     let pdata = PixelData{color: sample.color, weight: 1.0};
-                    self.pixel_buffer.add_pixel(sample.x, sample.y, &pdata);
+                    self.pixel_buffer.add_pixel(sample.x, height - sample.y - 1, &pdata);
                 }
 
                 self.n_tiles_processed += 1;
-                if self.n_tiles_processed == self.tiles.len() {
+                if self.n_tiles_processed == self.tiles.len() * self.scene_data.get_samples_per_pixel() {
                     self.renderig_in_progress = false;
                     while let Some(cur_thread) = self.threads.pop() {
                         cur_thread.join().unwrap();
@@ -142,6 +141,10 @@ impl Renderer {
         }
         return true;
     }
+
+    pub fn save<P: AsRef<Path>>(&self, path: P, tmo_type: &TMOType) -> Result<(), Box<dyn Error>> {
+        self.pixel_buffer.save(path, tmo_type)
+    }
 }
 
 #[cfg(test)]
@@ -155,7 +158,7 @@ mod tests {
         let start_time = Instant::now();
         loop {
             let is_finished = ren.render(Duration::from_millis(10));
-            if is_finished == true { break; }
+            if is_finished { break; }
         }
         let render_time = Instant::now() - start_time;
         println!("Render time {}", render_time.as_millis());
