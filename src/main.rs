@@ -15,7 +15,7 @@ use std::time::{Instant, Duration};
 
 use renderer::Renderer;
 use scene::SceneData;
-use shapes::Sphere;
+use shapes::{Sphere, Triangle};
 use vec::f32x3;
 
 use crate::pixel_buffer::TMOType;
@@ -24,6 +24,11 @@ fn build_test_scene_1() -> SceneData {
     let mut scene_data = SceneData::default();
     let sphere = Sphere::new(f32x3(0.0, 0.0, 3.0), 1.0);
     scene_data.add_shape(Box::new(sphere));
+
+    // let triangle = Triangle::new(f32x3(-1.0, 0.0, 3.0),
+    //                                        f32x3(1.0, 0.0, 3.0), 
+    //                                           f32x3(0.0, 1.0, 3.0));
+    // scene_data.add_shape(Box::new(triangle));
 
     scene_data.set_camera_pos(f32x3(0.0, 0.0, 0.0));
     scene_data.set_camera_look_at(f32x3(0.0, 0.0, 3.0));
