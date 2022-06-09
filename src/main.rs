@@ -10,6 +10,7 @@ pub mod camera;
 pub mod img_sampling;
 pub mod shapes;
 pub mod render;
+pub mod onb;
 
 use std::time::{Instant, Duration};
 
@@ -22,17 +23,17 @@ use crate::pixel_buffer::TMOType;
 
 fn build_test_scene_1() -> SceneData {
     let mut scene_data = SceneData::default();
-    let sphere = Sphere::new(f32x3(0.0, 0.0, 3.0), 1.0);
+    let sphere = Sphere::new(f32x3(0.0, 2.0, 3.0), 1.0);
     scene_data.add_shape(Box::new(sphere));
 
-    // let triangle = Triangle::new(f32x3(-1.0, 0.0, 3.0),
-    //                                        f32x3(1.0, 0.0, 3.0), 
-    //                                           f32x3(0.0, 1.0, 3.0));
-    // scene_data.add_shape(Box::new(triangle));
+    let triangle = Triangle::new(f32x3(-50.0, 0.0, 0.0),
+                                           f32x3(50.0, 0.0, 0.0), 
+                                              f32x3(0.0, 0.0, 50.0));
+    scene_data.add_shape(Box::new(triangle));
 
-    scene_data.set_camera_pos(f32x3(0.0, 0.0, 0.0));
-    scene_data.set_camera_look_at(f32x3(0.0, 0.0, 3.0));
-    scene_data.set_camera_horizontal_fov(60.0);
+    scene_data.set_camera_pos(f32x3(0.0, 2.0, 0.0));
+    scene_data.set_camera_look_at(f32x3(0.0, 2.0, 5.0));
+    scene_data.set_camera_horizontal_fov(90.0);
     scene_data
 }
 
@@ -47,6 +48,5 @@ fn main() {
 
     let render_time = Instant::now() - start_time;
     println!("Rendering time {}", render_time.as_millis());
-    ren.save("test.jpg", &TMOType::Linear);
+    let _result = ren.save("test.jpg", &TMOType::Linear);
 }
-

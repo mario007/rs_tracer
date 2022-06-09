@@ -52,7 +52,7 @@ impl PinholeCamera {
     }
 
     pub fn set_position(&mut self, eye: f32x3) {
-        self.eye;
+        self.eye = eye;
         self.calculate_and_set_uvw();
     }
 

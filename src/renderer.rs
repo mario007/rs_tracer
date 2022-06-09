@@ -10,7 +10,7 @@ use crate::pixel_buffer::{Color, PixelBuffer, PixelData, TMOType};
 use crate::ray::Ray;
 use crate::scene::SceneData;
 use crate::img_sampling::{Tile, ImageSampler};
-use crate::render::render_sample;
+use crate::render::ambient_occlusion;
 
 
 #[derive(Debug, Clone, Copy)]
@@ -28,7 +28,7 @@ fn render_tile(tile: &Tile, scene_data: &SceneData, rng: &mut PCGRng) -> Vec<Pix
     let mut img_sampler = ImageSampler::new(*tile);
     while let Some(sample) = img_sampler.next(rng) {
         let ray = scene_data.generate_ray(sample.x, sample.y, sample.xp, sample.yp);
-        let color = render_sample(&ray, scene_data, rng);
+        let color = ambient_occlusion(&ray, scene_data, rng);
         samples.push(PixelSample { x: sample.x, y: sample.y, color });
     }
 

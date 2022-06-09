@@ -1,6 +1,9 @@
 use std::default::Default;
 
-use crate::{camera::PinholeCamera, vec::{f32x3, f64x3}, ray::Ray, shapes::Intersect};
+use crate::camera::PinholeCamera;
+use crate::vec::{f32x3, f64x3};
+use crate::ray::Ray;
+use crate::shapes::GeometryInterface;
 
 extern crate num_cpus;
 
@@ -10,7 +13,13 @@ pub struct SceneData {
     nthreads: usize,
     samples_per_pixel: usize,
     camera: PinholeCamera,
-    shapes: Vec<Box<dyn Intersect + Send + Sync>>
+    shapes: Vec<Box<dyn GeometryInterface + Send + Sync>>
+}
+
+pub struct ShadingPoint {
+    pub t: f32,
+    pub hitpoint: f32x3,
+    pub normal: f32x3,
 }
 
 impl SceneData {
@@ -55,23 +64,30 @@ impl SceneData {
         self.camera.generate_ray(img_x, img_y)
     }
 
-    pub fn add_shape(&mut self, shape: Box<dyn Intersect + Send + Sync>) {
+    pub fn add_shape(&mut self, shape: Box<dyn GeometryInterface + Send + Sync>) {
         self.shapes.push(shape);
     }
 
-    pub fn intersect(&self, ray: &Ray, tmax: f32) -> Option<f32> {
+    pub fn intersect(&self, ray: &Ray, tmax: f32) -> Option<ShadingPoint> {
         let origin = f64x3::from(ray.origin);
         let direction = f64x3::from(ray.direction);
         let mut cur_t = tmax as f64;
-        for shape in self.shapes.iter() {
+        let mut cur_shape_index = 0;
+        for (index, shape) in self.shapes.iter().enumerate() {
             if let Some(t) = shape.intersect(origin, direction, cur_t) {
                 if t < cur_t {
                     cur_t = t;
+                    cur_shape_index = index;
                 }
             }
         }
         if cur_t != tmax as f64 {
-            return Some(cur_t as f32);
+            let hitpoint = ray.origin + cur_t as f32 * ray.direction;
+            let mut normal = self.shapes[cur_shape_index].normal(hitpoint);
+            if normal.dot(-ray.direction) < 0.0 {
+                normal = -normal;
+            }
+            return Some(ShadingPoint{t: cur_t as f32, hitpoint, normal});
         }
         None
     }
@@ -80,7 +96,14 @@ impl SceneData {
 
 impl Default for SceneData {
     fn default() -> Self {
-        //Self { width: 200, height: 200, ntheads: num_cpus::get() }
-        Self { width: 1024, height: 768, nthreads: 1, samples_per_pixel: 1, camera: PinholeCamera::default(), shapes: Vec::new()}
+        Self {
+            width: 1024,
+            height: 768,
+            //ntheads: num_cpus::get()
+            nthreads: 1,
+            samples_per_pixel: 1,
+            camera: PinholeCamera::default(),
+            shapes: Vec::new()
+        }
     }
 }

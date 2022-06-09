@@ -1,8 +1,9 @@
 
 use crate::vec::{f32x3, f64x3};
 
-pub trait Intersect {
+pub trait GeometryInterface {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64>;
+    fn normal(&self, hitpoint: f32x3) -> f32x3;
 }
 
 pub struct Sphere {
@@ -17,7 +18,7 @@ impl Sphere {
     }
 }
 
-impl Intersect for Sphere {
+impl GeometryInterface for Sphere {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64> {
         let radius = self.radius as f64;
         let tmp = origin - f64x3::from(self.position);
@@ -42,6 +43,10 @@ impl Intersect for Sphere {
             }
             None
         }
+    }
+
+    fn normal(&self, hitpoint: f32x3) -> f32x3 {
+        (hitpoint - self.position).normalize()
     }
 }
 
@@ -107,8 +112,12 @@ impl Triangle {
     }
 }
 
-impl Intersect for Triangle {
+impl GeometryInterface for Triangle {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64> {
         ray_triangle(f64x3::from(self.v0), f64x3::from(self.v1), f64x3::from(self.v2), origin, direction, tmax)
+    }
+
+    fn normal(&self, _hitpoint: f32x3) -> f32x3 {
+        (self.v1 - self.v0).cross(self.v2 - self.v0).normalize()
     }
 }

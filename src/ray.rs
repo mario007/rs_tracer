@@ -13,7 +13,7 @@ impl Ray {
 }
 
 
-fn offset_ray_origin(hit: f32x3, normal: f32x3) -> f32x3 {
+pub fn offset_ray_origin(hit: f32x3, normal: f32x3) -> f32x3 {
 
     const fn int_scale() -> f32 {256.0}
     fn origin() -> f32 { 1.0 / 32.0}
