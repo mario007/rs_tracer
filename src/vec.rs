@@ -22,6 +22,10 @@ impl f32x3 {
         self.dot(self).sqrt()
     }
 
+    pub fn length_sqr(self) -> f32 {
+        self.dot(self)
+    }
+
     pub fn normalize(self) -> f32x3 {
         let inv_len = 1.0 / self.length();
         f32x3(self.0 * inv_len, self.1 * inv_len, self.2 * inv_len)

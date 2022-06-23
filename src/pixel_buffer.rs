@@ -87,6 +87,16 @@ impl Mul<Color> for f32 {
     }
 }
 
+impl AddAssign for Color {
+    fn add_assign(&mut self, rhs: Self) {
+        *self = Self {
+            red: self.red + rhs.red,
+            green: self.green + rhs.green,
+            blue: self.blue + rhs.blue
+        }
+    }
+}
+
 #[derive(Debug, Clone, Copy)]
 pub struct PixelData {
     pub color: Color,

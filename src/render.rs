@@ -36,3 +36,27 @@ pub fn ambient_occlusion(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) ->
    }
 }
 
+pub fn direct_lighting(ray: &Ray, scene_data: &SceneData, _rng: &mut PCGRng) -> Color {
+    let sp = match scene_data.intersect(ray, 1e30) {
+        Some(sp) => sp,
+        None => return Color::zero()
+    };
+
+    let mut acum_color = Color::zero();
+    for light in scene_data.lights.iter() {
+        let wo = -ray.direction;
+        let lgt_sample = light.illuminate(sp.hitpoint);
+        let wi = lgt_sample.wi;
+        if wi.dot(sp.normal) > 0.0 && wo.dot(sp.normal) > 0.0 {
+            let len_sqr = (sp.hitpoint - lgt_sample.position).length_sqr();
+            let bsdf_value = scene_data.eval_bsdf(&sp, wo, wi) * sp.normal.dot(wi);
+            let lgt_value = lgt_sample.intensity * lgt_sample.cos_theta;
+            let new_origin = offset_ray_origin(sp.hitpoint, sp.normal);
+            if scene_data.visible(new_origin, lgt_sample.position) {
+                acum_color += lgt_value * bsdf_value * (len_sqr * lgt_sample.pdfa).recip();
+            }
+        }
+    }
+
+    acum_color
+}

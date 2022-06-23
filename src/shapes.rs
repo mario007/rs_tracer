@@ -121,3 +121,24 @@ impl GeometryInterface for Triangle {
         (self.v1 - self.v0).cross(self.v2 - self.v0).normalize()
     }
 }
+
+pub struct Shape<T> {
+    pub geometry: T,
+    pub material_id: usize
+}
+
+impl<T> Shape<T> {
+    pub fn new(geometry: T, material_id: usize) -> Self {
+        Shape { geometry, material_id }
+    }
+}
+
+impl<T: GeometryInterface + Sync + Send> GeometryInterface for Shape<T> {
+    fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64> {
+        self.geometry.intersect(origin, direction, tmax)
+    }
+
+    fn normal(&self, hitpoint: f32x3) -> f32x3 {
+        self.geometry.normal(hitpoint)
+    }
+}
