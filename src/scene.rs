@@ -1,7 +1,7 @@
 use std::default::Default;
 
 use crate::camera::PinholeCamera;
-use crate::pixel_buffer::Color;
+use crate::pixel_buffer::{Color, TMOType};
 use crate::vec::{f32x3, f64x3};
 use crate::ray::Ray;
 use crate::shapes::{GeometryInterface, Shape};
@@ -38,7 +38,9 @@ pub struct SceneData {
     shapes: Vec<Shape<Box<dyn GeometryInterface + Send + Sync>>>,
     materials: Vec<Box<dyn BSDFInterface + Send + Sync>>,
     pub lights: Vec<Box<dyn LightInterface + Send + Sync>>,
-    pub rendering_algorithm: RenderingAlgorithm
+    pub rendering_algorithm: RenderingAlgorithm,
+    output: String,
+    tmo_type: TMOType
 }
 
 pub struct ShadingPoint {
@@ -53,12 +55,45 @@ impl SceneData {
         (self.width, self.height)
     }
 
+    pub fn set_image_size(&mut self, width: usize, height: usize) {
+        self.width = width;
+        self.height = height;
+    }
+
     pub fn get_nthreads(&self) -> usize {
         self.nthreads
     }
 
+    pub fn set_nthreads(&mut self, nthreads: usize) {
+        self.nthreads = nthreads
+    }
+
     pub fn get_samples_per_pixel(&self) -> usize {
         return self.samples_per_pixel
+    }
+
+    pub fn set_samples_per_pixel(&mut self, samples_per_pixel: usize) {
+        self.samples_per_pixel = samples_per_pixel;
+    }
+
+    pub fn set_rendering_algorithm(&mut self, rendering_algorithm: RenderingAlgorithm) {
+        self.rendering_algorithm = rendering_algorithm
+    }
+
+    pub fn set_output_file(&mut self, file_path: String) {
+        self.output = file_path
+    }
+
+    pub fn get_output_file(&self) -> String {
+        self.output.clone()
+    }
+
+    pub fn set_tmo_type(&mut self, tmo_type: TMOType) {
+        self.tmo_type = tmo_type
+    }
+
+    pub fn get_tmo_type(&self) -> &TMOType {
+        &self.tmo_type
     }
 
     pub fn set_camera_pos(&mut self, position: f32x3) {
@@ -150,13 +185,15 @@ impl Default for SceneData {
             width: 1024,
             height: 768,
             //ntheads: num_cpus::get()
-            nthreads: 8,
-            samples_per_pixel: 8,
+            nthreads: 1,
+            samples_per_pixel: 1,
             camera: PinholeCamera::default(),
             shapes: Vec::new(),
             materials: Vec::new(),
             lights: Vec::new(),
-            rendering_algorithm: RenderingAlgorithm::DirectLighting
+            rendering_algorithm: RenderingAlgorithm::DirectLighting,
+            output: "output.png".into(),
+            tmo_type: TMOType::Gamma
         }
     }
 }

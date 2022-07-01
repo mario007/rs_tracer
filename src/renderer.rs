@@ -144,8 +144,8 @@ impl Renderer {
         return true;
     }
 
-    pub fn save<P: AsRef<Path>>(&self, path: P, tmo_type: &TMOType) -> Result<(), Box<dyn Error>> {
-        self.pixel_buffer.save(path, tmo_type)
+    pub fn save(&self) -> Result<(), Box<dyn Error>> {
+        self.pixel_buffer.save(self.scene_data.get_output_file(), self.scene_data.get_tmo_type())
     }
 }
 

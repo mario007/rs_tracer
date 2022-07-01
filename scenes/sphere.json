@@ -1,0 +1,37 @@
+{
+    "global": {
+        "resolution": [1024, 768],
+        "spp": 1,
+        "rendering": "direct_lighting",
+        "output": "sphere.png",
+        "tonemap": "gamma",
+        "nthreads": 1
+    },
+    "camera": {
+        "eye": [0, 0, 0],
+        "lookat": [0, 0, 2],
+        "hfov": 78
+    },
+    "materials": [
+        {
+            "name": "red",
+            "type": "matte",
+            "diffuse": [1, 0, 0]
+        }
+    ],
+    "shapes": [
+        {
+            "type": "sphere",
+            "position": [0, 0, 2],
+            "radius": 1,
+            "material": "red"
+        }
+    ],
+    "lights": [
+        {
+            "type": "point",
+            "position": [0, 0, 0],
+            "intensity": [2, 2, 2]
+        }
+    ]
+}

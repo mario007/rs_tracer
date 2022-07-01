@@ -13,8 +13,9 @@ pub mod render;
 pub mod onb;
 pub mod materials;
 pub mod lights;
+pub mod json;
 
-use std::time::{Instant, Duration};
+use std::{time::{Instant, Duration}, env};
 
 use lights::PointLight;
 use materials::MatteMaterial;
@@ -23,6 +24,7 @@ use renderer::Renderer;
 use scene::SceneData;
 use shapes::{Sphere, Triangle, Shape};
 use vec::f32x3;
+use json::parse_json_file;
 
 use crate::pixel_buffer::TMOType;
 
@@ -94,7 +96,22 @@ fn build_cornell_1() -> SceneData {
 
 fn main() {
     //let scene_data = build_test_scene_1();
-    let scene_data = build_cornell_1();
+    //let scene_data = build_cornell_1();
+
+    let args: Vec<String> = env::args().collect();
+    if args.len() < 2 {
+        eprintln!("Missing scene description file");
+        return;
+    }
+
+    let scene_data = match parse_json_file(&args[1]) {
+        Err(err) => {
+            eprintln!("Problem parsing input file {}: {}", &args[1], err);
+            return;
+        },
+        Ok(scene) => scene
+    };
+
     let mut ren = Renderer::new(scene_data);
     let start_time = Instant::now();
     loop {
@@ -104,5 +121,5 @@ fn main() {
 
     let render_time = Instant::now() - start_time;
     println!("Rendering time {}", render_time.as_millis());
-    let _result = ren.save("test.png", &TMOType::Gamma);
+    let _result = ren.save();
 }
