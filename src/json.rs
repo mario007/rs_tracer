@@ -1,5 +1,5 @@
 use std::{error::Error, fs, collections::HashMap};
-use crate::{scene::{SceneData, RenderingAlgorithm}, pixel_buffer::{TMOType, Color}, vec::f32x3, materials::MatteMaterial, shapes::{Sphere, Shape}, lights::PointLight};
+use crate::{scene::{SceneData, RenderingAlgorithm}, pixel_buffer::{TMOType, Color}, vec::f32x3, materials::{MatteMaterial, MatteEmissiveMaterial}, shapes::{Sphere, Shape, Triangle}, lights::PointLight};
 use serde_json::Value;
 
 
@@ -29,6 +29,7 @@ pub fn parse_json_file(filename: &str) -> Result<SceneData, Box<dyn Error>> {
     if !lights.is_null() {
         parse_lights(&mut scene_data, lights)?;
     }
+    scene_data.create_area_lights();
 
     Ok(scene_data)
 }
@@ -76,24 +77,39 @@ fn parse_shape(scene_data: &mut SceneData, section: &Value, map: &HashMap<String
     let typ = parse_string(&section["type"], "shape->type")?;
     match typ.as_str() {
         "sphere" => parse_sphere_shape(scene_data, section, map)?,
+        "triangle" => parse_triangle_shape(scene_data, section, map)?,
         _ => return Err(format!("Unknown shape type {}", typ).into())
     };
     Ok(())
 }
 
-fn parse_sphere_shape(scene_data: &mut SceneData, section: &Value, map: &HashMap<String, usize>) -> Result<(), Box<dyn Error>> {
+fn parse_material_id(scene_data: &mut SceneData, section: &Value, map: &HashMap<String, usize>) -> Result<usize, Box<dyn Error>> {
     let mat_name = parse_string(&section["material"], "shape:material:name")?;
     let material_id = match map.get(&mat_name) {
         Some(material_id) => material_id,
         None => return Err(format!("Material {} doesn't exist", mat_name).into())
     };
+    Ok(*material_id)
+}
+
+fn parse_sphere_shape(scene_data: &mut SceneData, section: &Value, map: &HashMap<String, usize>) -> Result<(), Box<dyn Error>> {
+    let material_id = parse_material_id(scene_data, section, map)?;
     let postion = parse_f32x3(&section["position"], "shape->position")?;
     let radius = parse_f32(&section["radius"], "shape->radius")?;
     let sphere = Sphere::new(postion, radius);
-    scene_data.add_shape(Shape::new(Box::new(sphere), *material_id));
+    scene_data.add_shape(Shape::new(Box::new(sphere), material_id));
     Ok(())
 }
 
+fn parse_triangle_shape(scene_data: &mut SceneData, section: &Value, map: &HashMap<String, usize>) -> Result<(), Box<dyn Error>> {
+    let material_id = parse_material_id(scene_data, section, map)?;
+    let v1 = parse_f32x3(&section["v1"], "triangle->v1")?;
+    let v2 = parse_f32x3(&section["v2"], "triangle->v2")?;
+    let v3 = parse_f32x3(&section["v3"], "triangle->v3")?;
+    let tri = Triangle::new(v1, v2, v3);
+    scene_data.add_shape(Shape::new(Box::new(tri), material_id));
+    Ok(())
+}
 
 fn parse_materials(scene_data: &mut SceneData, section: &Value) -> Result<HashMap<String, usize>, Box<dyn Error>> {
     let mtrs = match section.as_array() {
@@ -116,6 +132,7 @@ fn parse_material(scene_data: &mut SceneData, section: &Value, name: &str) -> Re
     let typ = parse_string(&section["type"], "material->type")?;
     let material_id = match typ.as_str() {
         "matte" => parse_matte_material(scene_data, section, name)?,
+        "matte_emissive" => parse_matte_emissive_material(scene_data, section, name)?,
         _ => return Err(format!("Unknown material type {}", typ).into())
     };
     Ok(material_id)
@@ -124,6 +141,13 @@ fn parse_material(scene_data: &mut SceneData, section: &Value, name: &str) -> Re
 fn parse_matte_material(scene_data: &mut SceneData, section: &Value, name: &str) -> Result<usize, Box<dyn Error>> {
     let color = parse_color(&section["diffuse"], &format!("material:{}:diffuse", name))?;
     let material_id = scene_data.add_material(Box::new(MatteMaterial::new(color)));
+    Ok(material_id)
+}
+
+fn parse_matte_emissive_material(scene_data: &mut SceneData, section: &Value, name: &str) -> Result<usize, Box<dyn Error>> {
+    let color = parse_color(&section["diffuse"], &format!("material:{}:diffuse", name))?;
+    let emission = parse_color(&section["emission"], &format!("material:{}:emission", name))?;
+    let material_id = scene_data.add_material(Box::new(MatteEmissiveMaterial::new(color, emission)));
     Ok(material_id)
 }
 

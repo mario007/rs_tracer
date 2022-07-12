@@ -1,9 +1,10 @@
 
-use crate::vec::{f32x3, f64x3};
+use crate::{vec::{f32x3, f64x3}, pcg::PCGRng, scene::ShapeSample};
 
 pub trait GeometryInterface {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64>;
     fn normal(&self, hitpoint: f32x3) -> f32x3;
+    fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample>;
 }
 
 pub struct Sphere {
@@ -47,6 +48,10 @@ impl GeometryInterface for Sphere {
 
     fn normal(&self, hitpoint: f32x3) -> f32x3 {
         (hitpoint - self.position).normalize()
+    }
+
+    fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
+        None
     }
 }
 
@@ -112,6 +117,14 @@ impl Triangle {
     }
 }
 
+fn uniform_sample_triangle(u1: f32, u2: f32) -> (f32, f32, f32) {
+    let u_sqrt = u1.sqrt();
+    let u = 1.0 - u_sqrt;
+    let v = u2 * u_sqrt;
+    let w = 1.0 - u - v;
+    (u, v, w)
+}
+
 impl GeometryInterface for Triangle {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64> {
         ray_triangle(f64x3::from(self.v0), f64x3::from(self.v1), f64x3::from(self.v2), origin, direction, tmax)
@@ -119,6 +132,14 @@ impl GeometryInterface for Triangle {
 
     fn normal(&self, _hitpoint: f32x3) -> f32x3 {
         (self.v1 - self.v0).cross(self.v2 - self.v0).normalize()
+    }
+
+    fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
+        let (u, v, w) = uniform_sample_triangle(rng.rnd_f32(), rng.rnd_f32());
+        let position = u * self.v0 + v * self.v1 + w * self.v2;
+        let area = (self.v1 - self.v0).cross(self.v2 - self.v1).length() * 0.5;
+        let pdfa = area.recip();
+        Some(ShapeSample{position, pdfa, normal: self.normal(position)})
     }
 }
 
@@ -140,5 +161,9 @@ impl<T: GeometryInterface + Sync + Send> GeometryInterface for Shape<T> {
 
     fn normal(&self, hitpoint: f32x3) -> f32x3 {
         self.geometry.normal(hitpoint)
+    }
+
+    fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
+        self.geometry.generate_sample(interaction_point, rng)
     }
 }

@@ -1,7 +1,10 @@
 use std::default::Default;
 
 use crate::camera::PinholeCamera;
+use crate::lights::AreaLight;
+use crate::pcg::PCGRng;
 use crate::pixel_buffer::{Color, TMOType};
+use crate::traits::Zero;
 use crate::vec::{f32x3, f64x3};
 use crate::ray::Ray;
 use crate::shapes::{GeometryInterface, Shape};
@@ -10,6 +13,12 @@ extern crate num_cpus;
 
 pub trait BSDFInterface {
     fn eval(&self, wo: f32x3, normal: f32x3, wi: f32x3) -> Color;
+    fn is_emissive(&self) -> bool {
+        false
+    }
+    fn emssion(&self) -> Color {
+        Color::zero()
+    }
 }
 
 pub struct LightSample {
@@ -20,8 +29,17 @@ pub struct LightSample {
     pub cos_theta: f32
 }
 
+pub struct ShapeSample {
+    pub position: f32x3,
+    pub pdfa: f32,
+    pub normal: f32x3
+}
+
 pub trait LightInterface {
-    fn illuminate(&self, hit: f32x3) -> LightSample;
+    fn illuminate(&self, hit: f32x3, scene_data: &SceneData, rng: &mut PCGRng) -> Option<LightSample>;
+    fn is_area_light(&self) -> bool {
+        false
+    }
 }
 
 pub enum RenderingAlgorithm {
@@ -47,7 +65,8 @@ pub struct ShadingPoint {
     pub t: f32,
     pub hitpoint: f32x3,
     pub normal: f32x3,
-    material_id: usize
+    material_id: usize,
+    pub shape_id: usize
 }
 
 impl SceneData {
@@ -138,6 +157,24 @@ impl SceneData {
         self.lights.push(light);
     }
 
+    pub fn create_area_lights(&mut self) {
+        self.lights.retain(|light| !light.is_area_light());
+        for (shape_id, shape) in self.shapes.iter().enumerate() {
+            if self.materials[shape.material_id].is_emissive() {
+                self.lights.push(Box::new(AreaLight::new(shape_id)))
+            }
+        }
+    }
+
+    pub fn generate_shape_sample(&self, shape_id: usize, hit: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
+        self.shapes[shape_id].geometry.generate_sample(hit, rng)
+    }
+
+    pub fn get_emission(&self, shape_id: usize) -> Color {
+        let material_id = self.shapes[shape_id].material_id;
+        self.materials[material_id].emssion()
+    }
+
     pub fn intersect(&self, ray: &Ray, tmax: f32) -> Option<ShadingPoint> {
         let origin = f64x3::from(ray.origin);
         let direction = f64x3::from(ray.direction);
@@ -160,7 +197,7 @@ impl SceneData {
                 normal = -normal;
             }
             let material_id = shape.material_id;
-            return Some(ShadingPoint{t: cur_t as f32, hitpoint, normal, material_id});
+            return Some(ShadingPoint{t: cur_t as f32, hitpoint, normal, material_id, shape_id: cur_shape_index});
         }
         None
     }
