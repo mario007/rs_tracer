@@ -1,0 +1,123 @@
+{
+    "global": {
+        "resolution": [1024, 768],
+        "spp": 16,
+        "output": "cornell3.png",
+        "tonemap": "gamma",
+        "nthreads": 32,
+        "rendering": "direct_lighting"
+    },
+    "camera": {
+        "eye": [0.278, 0.273, -0.800],
+        "lookat": [0.278, 0.273, -0.799],
+        "hfov": 50
+    },
+    "materials":
+    [
+        {
+            "name": "red",
+            "type": "matte",
+            "diffuse": [0.63, 0.06, 0.04]
+        },
+        {
+            "name": "green",
+            "type": "matte",
+            "diffuse": [0.15, 0.48, 0.09]
+        },
+        {
+            "name": "white",
+            "type": "matte",
+            "diffuse": [0.76, 0.75, 0.5]
+        },
+        {
+            "name": "white_emissive",
+            "type": "matte_emissive",
+            "diffuse": [1, 1, 1],
+            "emission": [20, 20, 20]
+        }
+    ],
+    "shapes":
+    [
+        {
+            "info": "floor",
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.0],
+            "v2": [0.0, 0.0, 0.0],
+            "v3": [0.0, 0.0, 0.5592],  
+            "material": "white"
+        },
+        {
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.0],
+            "v2": [0.0, 0.0, 0.5592],
+            "v3": [0.556, 0.0, 0.5592],  
+            "material": "white"
+        },
+        {
+            "info": "ceiling",
+            "type": "triangle",
+            "v1": [0.556, 0.5488, 0.0],
+            "v2": [0.556, 0.5488, 0.5592],
+            "v3": [0.0, 0.5488, 0.5592],  
+            "material": "white"
+        },
+        {
+            "type": "triangle",
+            "v1": [0.556, 0.5488, 0.0],
+            "v2": [0.0, 0.5488, 0.5592],
+            "v3": [0.0, 0.5488, 0.0],  
+            "material": "white"
+        },
+        {
+            "info": "back",
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.5592],
+            "v2": [0.0, 0.0, 0.5592],
+            "v3": [0.0, 0.5488, 0.5592],  
+            "material": "white"
+        },
+        {
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.5592],
+            "v2": [0.0, 0.5488, 0.5592],
+            "v3": [0.556, 0.5488, 0.5592],  
+            "material": "white"
+        },
+        {
+            "info": "left",
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.0],
+            "v2": [0.556, 0.0, 0.5592],
+            "v3": [0.556, 0.5488, 0.5592],  
+            "material": "red"
+        },
+        {
+            "type": "triangle",
+            "v1": [0.556, 0.0, 0.0],
+            "v2": [0.556, 0.5488, 0.5592],
+            "v3": [0.556, 0.5488, 0.0],  
+            "material": "red"
+        },
+        {
+            "info": "right",
+            "type": "triangle",
+            "v1": [0.0, 0.0, 0.5592],
+            "v2": [0.0, 0.0, 0.0],
+            "v3": [0.0, 0.5488, 0.0],  
+            "material": "green"
+        },
+        {
+            "type": "triangle",
+            "v1": [0.0, 0.0, 0.5592],
+            "v2": [0.0, 0.5488, 0.0],
+            "v3": [0.0, 0.5488, 0.5592],  
+            "material": "green"
+        },
+        {
+            "type": "sphere",
+            "position": [0.3, 0.27, 0.2],
+            "radius": 0.05,
+            "material": "white_emissive"
+        }
+    ]
+}

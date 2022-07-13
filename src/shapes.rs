@@ -1,5 +1,6 @@
 
-use crate::{vec::{f32x3, f64x3}, pcg::PCGRng, scene::ShapeSample};
+use crate::{vec::{f32x3, f64x3}, pcg::PCGRng, scene::ShapeSample, onb::ONB};
+use std::f32;
 
 pub trait GeometryInterface {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64>;
@@ -50,9 +51,56 @@ impl GeometryInterface for Sphere {
         (hitpoint - self.position).normalize()
     }
 
+    // fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
+    //     let term1 = 2.0 * f32::consts::PI * rng.rnd_f32();
+    //     let u2 = rng.rnd_f32();
+    //     let term2 = 2.0 * (u2 - u2 * u2).sqrt();
+
+    //     let x = term1.cos() * term2;
+    //     let y = term1.sin() * term2;
+    //     let z = 1.0 - 2.0 * u2;
+
+    //     let pdfa = (4.0 * f32::consts::PI * self.radius * self.radius).recip();
+
+    //     let dir = f32x3(x, y, z).normalize();
+    //     let position = self.position + self.radius * dir;
+    //     let normal = self.normal(position);
+    //     Some(ShapeSample{position, pdfa, normal})
+    // }
+
     fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
-        None
+
+        let light_center_dir = self.position - interaction_point;
+        let d2 = light_center_dir.dot(light_center_dir);
+        let radius_sqr = self.radius * self.radius;
+        if (d2 - radius_sqr) < 1e-4 {
+            return None
+        }
+
+        let d = d2.sqrt();
+        let onb = ONB::from(light_center_dir * d.recip());
+        let cos_theta_max = (1.0 - radius_sqr / d2).sqrt();
+        let pdfw = (2.0 * f32::consts::PI * (1.0 - cos_theta_max)).recip();
+        let cos_theta = 1.0 + rng.rnd_f32() * (cos_theta_max - 1.0);
+        let sin2_theta = 1.0 - cos_theta * cos_theta;
+        let sin_theta = sin2_theta.sqrt();
+        let phi = 2.0 * f32::consts::PI * rng.rnd_f32();
+        let x = sin_theta * phi.cos();
+        let y = sin_theta * phi.sin();
+        let z = cos_theta;
+
+        let light_dir = onb.to_world(f32x3(x, y, z).normalize()).normalize();
+        let delta = (radius_sqr - sin2_theta * d2).sqrt();
+        let position = interaction_point + (cos_theta * d - delta) * light_dir;
+        let normal = self.normal(position);
+
+        let dist_sqr = (position - interaction_point).length_sqr();
+        let lgt_to_point = (interaction_point - position).normalize();
+        let pdfa = pdfw * normal.dot(lgt_to_point) / dist_sqr;
+
+        Some(ShapeSample{position, pdfa, normal})
     }
+
 }
 
 
