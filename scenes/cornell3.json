@@ -4,7 +4,7 @@
         "spp": 16,
         "output": "cornell3.png",
         "tonemap": "gamma",
-        "nthreads": 32,
+        "nthreads": 16,
         "rendering": "direct_lighting"
     },
     "camera": {

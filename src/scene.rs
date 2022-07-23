@@ -11,8 +11,20 @@ use crate::shapes::{GeometryInterface, Shape};
 
 extern crate num_cpus;
 
+pub struct BSDFEvalSample {
+    pub color: Color,
+    pub pdfw: f32
+}
+
+pub struct BSDFSample {
+    pub direction: f32x3,
+    pub color: Color,
+    pub pdfw: f32
+}
+
 pub trait BSDFInterface {
-    fn eval(&self, wo: f32x3, normal: f32x3, wi: f32x3) -> Color;
+    fn eval(&self, wo: f32x3, normal: f32x3, wi: f32x3) -> Option<BSDFEvalSample>;
+    fn sample(&self, wo: f32x3, normal: f32x3, rng: &mut PCGRng) -> Option<BSDFSample>;
     fn is_emissive(&self) -> bool {
         false
     }
@@ -37,6 +49,7 @@ pub struct ShapeSample {
 
 pub trait LightInterface {
     fn illuminate(&self, hit: f32x3, scene_data: &SceneData, rng: &mut PCGRng) -> Option<LightSample>;
+    fn is_delta_light(&self) -> bool;
     fn is_area_light(&self) -> bool {
         false
     }
@@ -175,6 +188,11 @@ impl SceneData {
         self.materials[material_id].emssion()
     }
 
+    pub fn is_emissive(&self, shape_id: usize) -> bool {
+        let material_id = self.shapes[shape_id].material_id;
+        self.materials[material_id].is_emissive()
+    }
+
     pub fn intersect(&self, ray: &Ray, tmax: f32) -> Option<ShadingPoint> {
         let origin = f64x3::from(ray.origin);
         let direction = f64x3::from(ray.direction);
@@ -209,10 +227,20 @@ impl SceneData {
         return self.intersect(&ray, tmax).is_none()
     }
 
-    pub fn eval_bsdf(&self, sp: &ShadingPoint, wo: f32x3, wi: f32x3) -> Color {
+    pub fn eval_bsdf(&self, sp: &ShadingPoint, wo: f32x3, wi: f32x3) -> Option<BSDFEvalSample> {
         let material = &self.materials[sp.material_id];
         material.eval(wo, sp.normal, wi)
     }
+
+    pub fn sample_bsdf(&self, sp: &ShadingPoint, wo: f32x3, rng: &mut PCGRng) -> Option<BSDFSample> {
+        let material = &self.materials[sp.material_id];
+        material.sample(wo, sp.normal, rng)
+    }
+
+    pub fn geometry_pdfa(&self, interaction_point: f32x3, sp: &ShadingPoint) -> Option<f32> {
+        self.shapes[sp.shape_id].geometry.pdfa(interaction_point, sp.hitpoint)
+    }
+
 
 }
 

@@ -26,6 +26,10 @@ impl LightInterface for PointLight {
         let cos_theta = 1.0;
         Some(LightSample { intensity, position, wi, pdfa, cos_theta})
     }
+
+    fn is_delta_light(&self) -> bool {
+        true
+    }
 }
 
 pub struct AreaLight {
@@ -61,5 +65,9 @@ impl LightInterface for AreaLight {
 
         let intensity = scene_data.get_emission(self.shape_id);
         Some(LightSample{intensity, position, wi, pdfa, cos_theta})
+    }
+
+    fn is_delta_light(&self) -> bool {
+        false
     }
 }

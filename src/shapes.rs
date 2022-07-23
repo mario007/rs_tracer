@@ -6,6 +6,7 @@ pub trait GeometryInterface {
     fn intersect(&self, origin: f64x3, direction: f64x3, tmax: f64) -> Option<f64>;
     fn normal(&self, hitpoint: f32x3) -> f32x3;
     fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample>;
+    fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32>;
 }
 
 pub struct Sphere {
@@ -101,6 +102,24 @@ impl GeometryInterface for Sphere {
         Some(ShapeSample{position, pdfa, normal})
     }
 
+    fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32> {
+        let light_center_dir = self.position - interaction_point;
+        let d2 = light_center_dir.dot(light_center_dir);
+        let radius_sqr = self.radius * self.radius;
+        if (d2 - radius_sqr) < 1e-4 {
+            return None
+        }
+
+        let cos_theta_max = (1.0 - radius_sqr / d2).sqrt();
+        let pdfw = (2.0 * f32::consts::PI * (1.0 - cos_theta_max)).recip();
+
+        let normal = self.normal(position);
+        let dist_sqr = (position - interaction_point).length_sqr();
+        let lgt_to_point = (interaction_point - position).normalize();
+        let pdfa = pdfw * normal.dot(lgt_to_point) / dist_sqr;
+        Some(pdfa)
+    }
+
 }
 
 
@@ -189,6 +208,12 @@ impl GeometryInterface for Triangle {
         let pdfa = area.recip();
         Some(ShapeSample{position, pdfa, normal: self.normal(position)})
     }
+
+    fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32> {
+        let area = (self.v1 - self.v0).cross(self.v2 - self.v1).length() * 0.5;
+        let pdfa = area.recip();
+        Some(pdfa)
+    }
 }
 
 pub struct Shape<T> {
@@ -213,5 +238,9 @@ impl<T: GeometryInterface + Sync + Send> GeometryInterface for Shape<T> {
 
     fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample> {
         self.geometry.generate_sample(interaction_point, rng)
+    }
+
+    fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32> {
+        self.geometry.pdfa(interaction_point, position)
     }
 }
