@@ -1,11 +1,11 @@
 {
     "global": {
         "resolution": [1024, 768],
-        "spp": 1,
+        "spp": 512,
         "output": "cornell2.png",
         "tonemap": "gamma",
-        "nthreads": 1,
-        "rendering": "direct_lighting"
+        "nthreads": 16,
+        "rendering": "path"
     },
     "camera": {
         "eye": [0.278, 0.273, -0.800],

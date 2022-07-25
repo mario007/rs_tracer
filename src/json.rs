@@ -165,6 +165,7 @@ fn parse_global(scene_data: &mut SceneData, section: &Value) -> Result<(), Box<d
         match alg.as_str() {
             "ambient" => scene_data.set_rendering_algorithm(RenderingAlgorithm::AmbientOcclusion),
             "direct_lighting" => scene_data.set_rendering_algorithm(RenderingAlgorithm::DirectLighting),
+            "path" => scene_data.set_rendering_algorithm(RenderingAlgorithm::PathTracer),
             _ => return Err(format!("Unknown rendering algorithm: {}", alg).into())
         }
     }

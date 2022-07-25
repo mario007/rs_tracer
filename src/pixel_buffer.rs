@@ -20,6 +20,10 @@ impl Color {
             (self.blue * 256.0) as u8,
         ]
     }
+
+    pub fn luminance(self) -> f32 {
+        self.red * 0.2126 + self.green * 0.7152 + self.blue * 0.0722
+    }
 }
 
 impl Zero for Color {

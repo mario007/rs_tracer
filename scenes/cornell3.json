@@ -5,7 +5,7 @@
         "output": "cornell3.png",
         "tonemap": "gamma",
         "nthreads": 16,
-        "rendering": "direct_lighting"
+        "rendering": "path"
     },
     "camera": {
         "eye": [0.278, 0.273, -0.800],

@@ -230,3 +230,62 @@ pub fn direct_lighting(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> C
 
     acum_color
 }
+
+
+pub fn path_tracer(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
+
+    let mut sp = match scene_data.intersect(ray, 1e30) {
+        Some(sp) => sp,
+        None => return Color::zero()
+    };
+
+    let mut acum_color = scene_data.get_emission(sp.shape_id);
+
+    let mut depth = 1;
+    let max_depth = 10;
+    let mut path = Color::one();
+    let mut wo = -ray.direction;
+    let threshold = 0.0001;
+
+    loop {
+        let bs = match scene_data.sample_bsdf(&sp, wo, rng) {
+            Some(bs) => bs,
+            None => break
+        };
+
+        let wi = bs.direction;
+        let normal = sp.normal;
+
+        let cos_theta = wi.dot(normal).abs();
+        path = path * bs.color * (cos_theta / bs.pdfw);
+
+        let origin = offset_ray_origin(sp.hitpoint, normal);
+        let ray = Ray::new(origin, wi);
+
+        sp = match scene_data.intersect(&ray, 1e30) {
+            Some(sp) => sp,
+            None => break
+        };
+
+        if scene_data.is_emissive(sp.shape_id) {
+            if wi.dot(normal) > 0.0 && wo.dot(normal) > 0.0 {
+                acum_color += path * scene_data.get_emission(sp.shape_id);
+                break
+            }
+        }
+
+        wo = -ray.direction;
+        depth += 1;
+        if depth == max_depth {
+            break
+        }
+
+        if path.luminance() < threshold {
+            break
+        }
+
+    }
+
+    acum_color
+
+}

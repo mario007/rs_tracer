@@ -10,7 +10,7 @@ use crate::pixel_buffer::{Color, PixelBuffer, PixelData, TMOType};
 use crate::ray::Ray;
 use crate::scene::{SceneData, RenderingAlgorithm};
 use crate::img_sampling::{Tile, ImageSampler};
-use crate::render::{ambient_occlusion, direct_lighting};
+use crate::render::{ambient_occlusion, direct_lighting, path_tracer};
 
 
 #[derive(Debug, Clone, Copy)]
@@ -30,7 +30,8 @@ fn render_tile(tile: &Tile, scene_data: &SceneData, rng: &mut PCGRng) -> Vec<Pix
         let ray = scene_data.generate_ray(sample.x, sample.y, sample.xp, sample.yp);
         let color = match scene_data.rendering_algorithm {
             RenderingAlgorithm::AmbientOcclusion => ambient_occlusion(&ray, scene_data, rng),
-            RenderingAlgorithm::DirectLighting => direct_lighting(&ray, scene_data, rng)
+            RenderingAlgorithm::DirectLighting => direct_lighting(&ray, scene_data, rng),
+            RenderingAlgorithm::PathTracer => path_tracer(&ray, scene_data, rng)
         };
         samples.push(PixelSample { x: sample.x, y: sample.y, color });
     }

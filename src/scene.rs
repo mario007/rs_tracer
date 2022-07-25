@@ -57,7 +57,8 @@ pub trait LightInterface {
 
 pub enum RenderingAlgorithm {
     AmbientOcclusion,
-    DirectLighting
+    DirectLighting,
+    PathTracer
 }
 
 pub struct SceneData {
