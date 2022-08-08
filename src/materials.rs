@@ -34,6 +34,9 @@ impl BSDFInterface for MatteMaterial {
         let direction = ONB::from(normal).to_world(f32x3(x, y, z)).normalize();
         let color = self.reflectance * f32::consts::FRAC_1_PI;
         let pdfw = normal.dot(direction).abs() * f32::consts::FRAC_1_PI;
+        if pdfw == 0.0 {
+            return None
+        }
         Some(BSDFSample{direction, color, pdfw})
     }
 }
@@ -68,6 +71,9 @@ impl BSDFInterface for MatteEmissiveMaterial {
         let direction = ONB::from(normal).to_world(f32x3(x, y, z)).normalize();
         let color = self.reflectance * f32::consts::FRAC_1_PI;
         let pdfw = normal.dot(direction).abs() * f32::consts::FRAC_1_PI;
+        if pdfw == 0.0 {
+            return None
+        }
         Some(BSDFSample{direction, color, pdfw})
     }
 

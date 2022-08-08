@@ -231,6 +231,35 @@ pub fn direct_lighting(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> C
     acum_color
 }
 
+fn pick_random_light(scene_data: &SceneData, rng: &mut PCGRng) -> (usize, f32) {
+    let nlights = scene_data.lights.len();
+    let light_id = ((rng.rnd_f32() * nlights as f32) as usize).clamp(0, nlights - 1);
+    let light_picking_pdf = 1.0 / nlights as f32;
+    (light_id, light_picking_pdf)
+}
+
+fn explicit_direct_lighting(sp: &ShadingPoint, wo: f32x3, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
+    let (light_id, light_picking_pdf) = pick_random_light(scene_data, rng);
+    if let Some(lgt_sample) = &scene_data.lights[light_id].illuminate(sp.hitpoint, scene_data, rng) {
+        let wi = lgt_sample.wi;
+        if wi.dot(sp.normal) > 0.0 && wo.dot(sp.normal) > 0.0 {
+            let len_sqr = (sp.hitpoint - lgt_sample.position).length_sqr();
+            if let Some(bs_eval) = scene_data.eval_bsdf(&sp, wo, wi) {
+                let bsdf_value = bs_eval.color * sp.normal.dot(wi).abs();
+                let lgt_value = lgt_sample.intensity * lgt_sample.cos_theta;
+                let new_origin = offset_ray_origin(sp.hitpoint, sp.normal);
+                if scene_data.visible(new_origin, lgt_sample.position) {
+                    let light_pdf = lgt_sample.pdfa * light_picking_pdf;
+                    let bs_pdfa = bs_eval.pdfw * lgt_sample.cos_theta * len_sqr.recip();
+                    let weight = balance_heuristic(light_pdf, bs_pdfa);
+                    return weight * lgt_value * bsdf_value * (len_sqr * light_pdf).recip();
+                }
+            }
+        }
+    }
+    Color::zero()
+}
+
 
 pub fn path_tracer(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
 
@@ -246,8 +275,12 @@ pub fn path_tracer(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color
     let mut path = Color::one();
     let mut wo = -ray.direction;
     let threshold = 0.0001;
+    let use_mis = true;
 
     loop {
+        if use_mis {
+            acum_color += path * explicit_direct_lighting(&sp, wo, scene_data, rng);
+        }
         let bs = match scene_data.sample_bsdf(&sp, wo, rng) {
             Some(bs) => bs,
             None => break
@@ -255,6 +288,7 @@ pub fn path_tracer(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color
 
         let wi = bs.direction;
         let normal = sp.normal;
+        let hitpoint = sp.hitpoint;
 
         let cos_theta = wi.dot(normal).abs();
         path = path * bs.color * (cos_theta / bs.pdfw);
@@ -268,9 +302,24 @@ pub fn path_tracer(ray: &Ray, scene_data: &SceneData, rng: &mut PCGRng) -> Color
         };
 
         if scene_data.is_emissive(sp.shape_id) {
-            if wi.dot(normal) > 0.0 && wo.dot(normal) > 0.0 {
-                acum_color += path * scene_data.get_emission(sp.shape_id);
-                break
+            if use_mis {
+                if wi.dot(sp.normal) > 0.0 && wo.dot(sp.normal) > 0.0 {
+                    let emission = scene_data.get_emission(sp.shape_id);
+                    if let Some(pdfa) = scene_data.geometry_pdfa(hitpoint, &sp) {
+                        let cos_theta = sp.normal.dot(-wi).abs();
+                        let pdfw = pdfa * (hitpoint - sp.hitpoint).length_sqr() * cos_theta.recip();
+                        let light_picking_pdf = 1.0 / scene_data.lights.len() as f32;
+                        let weight = balance_heuristic(bs.pdfw, pdfw * light_picking_pdf);
+                        acum_color += weight * path * emission;
+                        break
+                    }
+                }
+
+            } else {
+                if wi.dot(normal) > 0.0 && wo.dot(normal) > 0.0 {
+                    acum_color += path * scene_data.get_emission(sp.shape_id);
+                    break
+                }
             }
         }
 
