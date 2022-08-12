@@ -17,9 +17,47 @@ pub mod json;
 
 use std::{time::{Instant, Duration}, env};
 
+use minifb::{Window, WindowOptions, Key};
 use renderer::Renderer;
 use json::parse_json_file;
+use scene::SceneData;
 
+fn run_in_console(scene_data: SceneData) {
+    let mut ren = Renderer::new(scene_data);
+    let start_time = Instant::now();
+    loop {
+        let is_finished = ren.render(Duration::from_millis(500));
+        if is_finished { break; }
+    }
+
+    let render_time = Instant::now() - start_time;
+    println!("Rendering time {}", render_time.as_millis());
+    let _result = ren.save();
+}
+
+fn run_in_window(scene_data: SceneData) {
+    let (width, height) = scene_data.image_size();
+    let mut window = Window::new(
+        "Tracer - ESC to exit",
+        width,
+        height,
+        WindowOptions::default()
+    ).unwrap_or_else(|e| {
+        panic!("{}", e);
+    });
+
+    let mut ren = Renderer::new(scene_data);
+    let start_time = Instant::now();
+    while window.is_open() && !window.is_key_down(Key::Escape) {
+        let is_finished = ren.render(Duration::from_millis(500));
+        let buffer = ren.to_rgb_vector();
+        let _r = window.update_with_buffer(&buffer, width, height);
+        if is_finished { break; }
+    }
+    let render_time = Instant::now() - start_time;
+    println!("Rendering time {}", render_time.as_millis());
+    let _result = ren.save();
+}
 
 fn main() {
     let args: Vec<String> = env::args().collect();
@@ -36,14 +74,17 @@ fn main() {
         Ok(scene) => scene
     };
 
-    let mut ren = Renderer::new(scene_data);
-    let start_time = Instant::now();
-    loop {
-        let is_finished = ren.render(Duration::from_millis(100));
-        if is_finished { break; }
+    let mut console = false;
+    for a in args {
+        if a == "--console" {
+            console = true;
+        }
     }
 
-    let render_time = Instant::now() - start_time;
-    println!("Rendering time {}", render_time.as_millis());
-    let _result = ren.save();
+    if console {
+        run_in_console(scene_data);
+    } else {
+        run_in_window(scene_data);
+    }
+    
 }

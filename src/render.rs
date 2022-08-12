@@ -240,7 +240,7 @@ fn pick_random_light(scene_data: &SceneData, rng: &mut PCGRng) -> (usize, f32) {
 
 fn explicit_direct_lighting(sp: &ShadingPoint, wo: f32x3, scene_data: &SceneData, rng: &mut PCGRng) -> Color {
     let (light_id, light_picking_pdf) = pick_random_light(scene_data, rng);
-    if let Some(lgt_sample) = &scene_data.lights[light_id].illuminate(sp.hitpoint, scene_data, rng) {
+    if let Some(lgt_sample) = scene_data.lights[light_id].illuminate(sp.hitpoint, scene_data, rng) {
         let wi = lgt_sample.wi;
         if wi.dot(sp.normal) > 0.0 && wo.dot(sp.normal) > 0.0 {
             let len_sqr = (sp.hitpoint - lgt_sample.position).length_sqr();
@@ -251,7 +251,10 @@ fn explicit_direct_lighting(sp: &ShadingPoint, wo: f32x3, scene_data: &SceneData
                 if scene_data.visible(new_origin, lgt_sample.position) {
                     let light_pdf = lgt_sample.pdfa * light_picking_pdf;
                     let bs_pdfa = bs_eval.pdfw * lgt_sample.cos_theta * len_sqr.recip();
-                    let weight = balance_heuristic(light_pdf, bs_pdfa);
+                    let mut weight = 1.0;
+                    if !scene_data.lights[light_id].is_delta_light() {
+                        weight = balance_heuristic(light_pdf, bs_pdfa);
+                    }
                     return weight * lgt_value * bsdf_value * (len_sqr * light_pdf).recip();
                 }
             }

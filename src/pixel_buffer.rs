@@ -217,6 +217,14 @@ impl PixelBuffer {
             }
         }
     }
+
+    pub fn to_rgb_vector(&self, tmo_type: &TMOType) -> Vec<u32> {
+        let output = self.pixels.iter().map(|pdata: &PixelData| {
+            let v = tone_map(tmo_type, pdata.get_color()).to_rgb8();
+            return ((v[0] as u32) << 16) | ((v[1] as u32) << 8) | v[2] as u32;
+        }).collect();
+        output
+    }
 }
 
 

@@ -93,10 +93,10 @@ impl Renderer {
 
             let handle = thread::spawn (move || {
                 let mut rng = PCGRng::new(0xf123456789012345, 1000 * thread_id as u64);
-                for _n in 0..sc_data.get_samples_per_pixel() {
                     for tile in tiles.iter().skip(thread_id).step_by(n_actual_threads) {
-                        let samples = render_tile(tile, &sc_data, &mut rng);
-                        sender.send(TileData {samples});
+                        for _n in 0..sc_data.get_samples_per_pixel() {
+                            let samples = render_tile(tile, &sc_data, &mut rng);
+                            sender.send(TileData {samples});
                     }
                 }
             });
@@ -148,6 +148,11 @@ impl Renderer {
     pub fn save(&self) -> Result<(), Box<dyn Error>> {
         self.pixel_buffer.save(self.scene_data.get_output_file(), self.scene_data.get_tmo_type())
     }
+
+    pub fn to_rgb_vector(&self) -> Vec<u32> {
+        self.pixel_buffer.to_rgb_vector(self.scene_data.get_tmo_type())
+    }
+
 }
 
 #[cfg(test)]
