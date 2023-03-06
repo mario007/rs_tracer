@@ -68,7 +68,7 @@ impl PinholeCamera {
 
     pub fn generate_ray(&self, x: f32, y: f32) -> Ray {
         let direction = (x * self.u + y * self.v - self.view_plane_distance * self.w).normalize();
-        Ray { origin: self.eye, direction }
+        Ray::new(self.eye, direction)
     }
 }
 

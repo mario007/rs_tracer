@@ -36,6 +36,14 @@ impl f32x3 {
               difference_of_products(self.2, other.0, self.0, other.2),
               difference_of_products(self.0, other.1, self.1, other.0))
     }
+
+    pub fn min(self, other: f32x3) -> f32x3 {
+        f32x3(self.0.min(other.0), self.1.min(other.1), self.2.min(other.2))
+    }
+
+    pub fn max(self, other: f32x3) -> f32x3 {
+        f32x3(self.0.max(other.0), self.1.max(other.1), self.2.max(other.2))
+    }
 }
 
 impl Add for f32x3 {

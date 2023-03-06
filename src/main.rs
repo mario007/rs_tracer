@@ -14,6 +14,8 @@ pub mod onb;
 pub mod materials;
 pub mod lights;
 pub mod json;
+pub mod bbox;
+pub mod bvh;
 
 use std::{time::{Instant, Duration}, env};
 
@@ -23,7 +25,10 @@ use json::parse_json_file;
 use scene::SceneData;
 
 fn run_in_console(scene_data: SceneData) {
+    let prepare_time = Instant::now();
     let mut ren = Renderer::new(scene_data);
+    let prepare_time = Instant::now() - prepare_time;
+    println!("Prepare time {}", prepare_time.as_millis());
     let start_time = Instant::now();
     loop {
         let is_finished = ren.render(Duration::from_millis(500));

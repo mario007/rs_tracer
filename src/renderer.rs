@@ -67,8 +67,9 @@ pub struct Renderer {
 
 impl Renderer {
 
-    pub fn new(sc_data: SceneData) -> Renderer {
+    pub fn new(mut sc_data: SceneData) -> Renderer {
         let (width, height) = sc_data.image_size();
+        sc_data.prepare();
         Renderer {
             scene_data: Arc::new(sc_data),
             renderig_in_progress: false,

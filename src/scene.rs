@@ -1,5 +1,6 @@
 use std::default::Default;
 
+use crate::bvh::{BVHPrimitive, build_bottom_up_bvh, BVH};
 use crate::camera::PinholeCamera;
 use crate::lights::AreaLight;
 use crate::pcg::PCGRng;
@@ -8,6 +9,7 @@ use crate::traits::Zero;
 use crate::vec::{f32x3, f64x3};
 use crate::ray::Ray;
 use crate::shapes::{GeometryInterface, Shape};
+use crate::bbox::AABB;
 
 extern crate num_cpus;
 
@@ -72,7 +74,10 @@ pub struct SceneData {
     pub lights: Vec<Box<dyn LightInterface + Send + Sync>>,
     pub rendering_algorithm: RenderingAlgorithm,
     output: String,
-    tmo_type: TMOType
+    tmo_type: TMOType,
+
+    bbox_shapes: Vec<AABB>,
+    bvh: Option<BVH>
 }
 
 pub struct ShadingPoint {
@@ -194,19 +199,58 @@ impl SceneData {
         self.materials[material_id].is_emissive()
     }
 
+    pub fn intersect_new(&self, ray: &Ray, tmax: f32) -> Option<ShadingPoint> {
+        let isect = |prim: usize, origin: f64x3,
+                                                 direction: f64x3, tmax: f64| -> Option<f64> {
+            let shape = &self.shapes[prim];
+            shape.geometry.intersect(origin, direction, tmax)
+        };
+
+        if let Some(bvh) = &self.bvh {
+            if let Some(is) = bvh.intersection(&ray, tmax, &isect) {
+                return Some(self.create_shading_point(&ray, is.t, is.primitive))
+            }
+        }
+        None
+    }
+
+    fn create_shading_point(&self, ray: &Ray, t: f64, shape_id: usize) -> ShadingPoint {
+        let shape = &self.shapes[shape_id];
+        let hitpoint = ray.origin + t as f32 * ray.direction;
+        let mut normal = shape.geometry.normal(hitpoint);
+        
+        if normal.dot(-ray.direction) < 0.0 {
+            normal = -normal;
+        }
+        let material_id = shape.material_id;
+        return ShadingPoint{t: t as f32, hitpoint, normal, material_id, shape_id};
+    }
+
     pub fn intersect(&self, ray: &Ray, tmax: f32) -> Option<ShadingPoint> {
         let origin = f64x3::from(ray.origin);
         let direction = f64x3::from(ray.direction);
         let mut cur_t = tmax as f64;
         let mut cur_shape_index = 0;
-        for (index, shape) in self.shapes.iter().enumerate() {
-            if let Some(t) = shape.geometry.intersect(origin, direction, cur_t) {
-                if t < cur_t {
-                    cur_t = t;
-                    cur_shape_index = index;
+        for index in 0..self.bbox_shapes.len() {
+            let bbox = &self.bbox_shapes[index];
+            if bbox.intersection(ray) {
+                let shape = &self.shapes[index];
+                if let Some(t) = shape.geometry.intersect(origin, direction, cur_t) {
+                    if t < cur_t {
+                        cur_t = t;
+                        cur_shape_index = index;
+                    }
                 }
             }
         }
+        // for (index, shape) in self.shapes.iter().enumerate() {
+        //     if let Some(t) = shape.geometry.intersect(origin, direction, cur_t) {
+        //         if t < cur_t {
+        //             cur_t = t;
+        //             cur_shape_index = index;
+        //         }
+        //     }
+        // }
         if cur_t != tmax as f64 {
             let shape = &self.shapes[cur_shape_index];
             let hitpoint = ray.origin + cur_t as f32 * ray.direction;
@@ -221,11 +265,39 @@ impl SceneData {
         None
     }
 
+    pub fn visible_new(&self, p0: f32x3, p1: f32x3) -> bool {
+        let isect = |prim: usize, origin: f64x3,
+                                                 direction: f64x3, tmax: f64| -> Option<f64> {
+            let shape = &self.shapes[prim];
+            shape.geometry.intersect(origin, direction, tmax)
+        };
+
+        if let Some(bvh) = &self.bvh {
+            let direction = p1 - p0;
+            let tmax = direction.length();
+            let ray = Ray::new(p0, direction.normalize());
+            return bvh.visible(&ray, tmax, &isect);
+        }
+        true
+    }
+
     pub fn visible(&self, p0: f32x3, p1: f32x3) -> bool {
         let direction = p1 - p0;
         let tmax = direction.length();
         let ray = Ray::new(p0, direction.normalize());
-        return self.intersect(&ray, tmax).is_none()
+        let origin = f64x3::from(ray.origin);
+        let direction = f64x3::from(ray.direction);
+
+        for index in 0..self.bbox_shapes.len() {
+            let bbox = &self.bbox_shapes[index];
+            if bbox.intersection(&ray) {
+                let shape = &self.shapes[index];
+                if let Some(_t) = shape.geometry.intersect(origin, direction, tmax as f64) {
+                    return false
+                }
+            }
+        }
+        return true
     }
 
     pub fn eval_bsdf(&self, sp: &ShadingPoint, wo: f32x3, wi: f32x3) -> Option<BSDFEvalSample> {
@@ -242,6 +314,22 @@ impl SceneData {
         self.shapes[sp.shape_id].geometry.pdfa(interaction_point, sp.hitpoint)
     }
 
+    pub fn prepare(&mut self) {
+        self.bbox_shapes.clear();
+        for shape in &self.shapes {
+            self.bbox_shapes.push(shape.geometry.bbox());
+        }
+
+        // if !self.shapes.is_empty() {
+        //     let mut prims = Vec::new();
+        //     for (index, shape) in self.shapes.iter().enumerate() {
+        //         prims.push(BVHPrimitive{bbox: shape.geometry.bbox(), primitive: index})
+        //     }
+        //     let bvh = build_bottom_up_bvh(&prims);
+        //     self.bvh = Some(bvh);
+        // }
+    }
+
 
 }
 
@@ -250,8 +338,7 @@ impl Default for SceneData {
         Self {
             width: 1024,
             height: 768,
-            //ntheads: num_cpus::get()
-            nthreads: 1,
+            nthreads: num_cpus::get(),
             samples_per_pixel: 1,
             camera: PinholeCamera::default(),
             shapes: Vec::new(),
@@ -259,7 +346,9 @@ impl Default for SceneData {
             lights: Vec::new(),
             rendering_algorithm: RenderingAlgorithm::DirectLighting,
             output: "output.png".into(),
-            tmo_type: TMOType::Gamma
+            tmo_type: TMOType::Gamma,
+            bbox_shapes: Vec::new(),
+            bvh: None
         }
     }
 }

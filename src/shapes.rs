@@ -1,5 +1,5 @@
 
-use crate::{vec::{f32x3, f64x3}, pcg::PCGRng, scene::ShapeSample, onb::ONB};
+use crate::{vec::{f32x3, f64x3}, pcg::PCGRng, scene::ShapeSample, onb::ONB, bbox::AABB};
 use std::f32;
 
 pub trait GeometryInterface {
@@ -7,6 +7,7 @@ pub trait GeometryInterface {
     fn normal(&self, hitpoint: f32x3) -> f32x3;
     fn generate_sample(&self, interaction_point: f32x3, rng: &mut PCGRng) -> Option<ShapeSample>;
     fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32>;
+    fn bbox(&self) -> AABB;
 }
 
 pub struct Sphere {
@@ -120,6 +121,12 @@ impl GeometryInterface for Sphere {
         Some(pdfa)
     }
 
+    fn bbox(&self) -> AABB {
+        let min = self.position - f32x3(self.radius, self.radius, self.radius);
+        let max = self.position + f32x3(self.radius, self.radius, self.radius);
+        AABB::new(min, max)
+    }
+
 }
 
 
@@ -214,6 +221,12 @@ impl GeometryInterface for Triangle {
         let pdfa = area.recip();
         Some(pdfa)
     }
+
+    fn bbox(&self) -> AABB {
+        let min = self.v0.min(self.v1).min(self.v2);
+        let max = self.v0.max(self.v1).max(self.v2);
+        AABB::new(min, max)
+    }
 }
 
 pub struct Shape<T> {
@@ -242,5 +255,9 @@ impl<T: GeometryInterface + Sync + Send> GeometryInterface for Shape<T> {
 
     fn pdfa(&self, interaction_point: f32x3, position: f32x3) -> Option<f32> {
         self.geometry.pdfa(interaction_point, position)
+    }
+
+    fn bbox(&self) -> AABB {
+        self.geometry.bbox()
     }
 }
