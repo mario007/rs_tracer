@@ -20,13 +20,14 @@ pub mod bvh;
 use std::{time::{Instant, Duration}, env};
 
 use minifb::{Window, WindowOptions, Key};
-use renderer::Renderer;
+use renderer::{Renderer, Renderer2};
 use json::parse_json_file;
 use scene::SceneData;
 
 fn run_in_console(scene_data: SceneData) {
     let prepare_time = Instant::now();
-    let mut ren = Renderer::new(scene_data);
+    //let mut ren = Renderer::new(scene_data);
+    let mut ren = Renderer2::new(scene_data);
     let prepare_time = Instant::now() - prepare_time;
     println!("Prepare time {}", prepare_time.as_millis());
     let start_time = Instant::now();
@@ -51,7 +52,8 @@ fn run_in_window(scene_data: SceneData) {
         panic!("{}", e);
     });
 
-    let mut ren = Renderer::new(scene_data);
+    //let mut ren = Renderer::new(scene_data);
+    let mut ren = Renderer2::new(scene_data);
     let start_time = Instant::now();
     while window.is_open() && !window.is_key_down(Key::Escape) {
         let is_finished = ren.render(Duration::from_millis(500));

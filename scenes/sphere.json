@@ -5,7 +5,7 @@
         "rendering": "direct_lighting",
         "output": "sphere.png",
         "tonemap": "gamma",
-        "nthreads": 1
+        "nthreads": 2
     },
     "camera": {
         "eye": [0, 0, 0],

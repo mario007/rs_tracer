@@ -1,7 +1,7 @@
 {
     "global": {
         "resolution": [1024, 768],
-        "spp": 16,
+        "spp": 64,
         "output": "cornell3.png",
         "tonemap": "gamma",
         "nthreads": 16,
